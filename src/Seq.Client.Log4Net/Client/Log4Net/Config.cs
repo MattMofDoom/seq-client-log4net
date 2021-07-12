@@ -14,7 +14,6 @@ namespace Seq.Client.Log4Net
         public static bool LogLineNumber { get; set;  }
         public static int CacheTime { get; set; }
         public static bool Destructure { get; set; }
-        public static int DestructureDepth { get; set; }
         public static string PropertyRegex { get; set; }
         public static string CorrelationProperty { get; set; }
 
