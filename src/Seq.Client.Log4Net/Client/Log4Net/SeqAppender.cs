@@ -159,6 +159,12 @@ namespace Seq.Client.Log4Net
             set => Config.Destructure = value;
         }
 
+        public int DestructureDepth
+        {
+            get => Config.DestructureDepth;
+            set => Config.DestructureDepth = value;
+        }
+
         public string PropertyRegex
         {
             get => Config.PropertyRegex;
