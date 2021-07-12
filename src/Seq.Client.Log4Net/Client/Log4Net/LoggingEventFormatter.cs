@@ -82,9 +82,9 @@ namespace Seq.Client.Log4Net
 
             if (Config.Destructure)
             {
-                message = DestructureRegex(loggingEvent.ThreadName, payload, message, ref delim);
-                message = DestructureXml(loggingEvent.ThreadName, payload, message, ref delim);
-                message = DestructureJson(loggingEvent.ThreadName, payload, message, ref delim);
+                message = DestructureRegex(loggingEvent.ThreadName, CorrelationCache.Contains(loggingEvent.ThreadName), payload, message, ref delim);
+                message = DestructureXml(loggingEvent.ThreadName, CorrelationCache.Contains(loggingEvent.ThreadName), payload, message, ref delim);
+                message = DestructureJson(loggingEvent.ThreadName, CorrelationCache.Contains(loggingEvent.ThreadName), payload, message, ref delim);
             }
 
             WriteJsonProperty("@m", message, ref delim, payload);
@@ -133,7 +133,7 @@ namespace Seq.Client.Log4Net
             payload.Write("}");
         }
 
-        static string DestructureRegex(string threadId, StringWriter payload, string message, ref string delim)
+        static string DestructureRegex(string threadId, bool isCorrelation, StringWriter payload, string message, ref string delim)
         {
             if (string.IsNullOrEmpty(Config.PropertyRegex)) return message;
             try
@@ -148,7 +148,7 @@ namespace Seq.Client.Log4Net
                             message = message.Replace(match.Groups[2].Value, mask.ToString());
                         WriteJsonProperty(match.Groups[1].Value, mask, ref delim, payload);
 
-                        if (!string.IsNullOrEmpty(Config.CorrelationProperty) &&
+                        if (!isCorrelation && !string.IsNullOrEmpty(Config.CorrelationProperty) &&
                             match.Groups[1].Value.Equals(Config.CorrelationProperty,
                                 StringComparison.OrdinalIgnoreCase))
                             CorrelationCache.Replace(threadId, mask.ToString());
@@ -163,7 +163,7 @@ namespace Seq.Client.Log4Net
             return message;
         }
 
-        static string DestructureJson(string threadId, StringWriter payload, string message, ref string delim)
+        static string DestructureJson(string threadId, bool isCorrelation, StringWriter payload, string message, ref string delim)
         {
             if (!message.Contains("{") || !message.Contains("}")) return message;
             Dictionary<string, string> jsonValues = new Dictionary<string, string>();
@@ -182,7 +182,7 @@ namespace Seq.Client.Log4Net
             }
 
             if (!json.Any()) return message;
-            var mask = EvaluateJson(threadId, 0, string.Empty, new MaskJson() {JsonObject = json});
+            var mask = EvaluateJson(threadId, isCorrelation, 0, string.Empty, new MaskJson() {JsonObject = json});
 
             foreach (var p in mask.JsonValues)
             {
@@ -203,7 +203,7 @@ namespace Seq.Client.Log4Net
         }
 
 
-        static MaskJson EvaluateJson(string threadId, int level = 0, string key = "", MaskJson json = null)
+        static MaskJson EvaluateJson(string threadId, bool isCorrelation, int level = 0, string key = "", MaskJson json = null)
         {
             var cLevel = level + 1;
             var updateJson = new ExpandoObject() as IDictionary<string, object>;
@@ -246,7 +246,7 @@ namespace Seq.Client.Log4Net
                 else
                 {
                     var subJson = new MaskJson() { JsonObject = (ExpandoObject) x.Value };
-                    subJson = string.IsNullOrEmpty(key) ? EvaluateJson(threadId, cLevel, x.Key, subJson) : EvaluateJson(threadId, cLevel, key + "_" + x.Key, subJson);
+                    subJson = string.IsNullOrEmpty(key) ? EvaluateJson(threadId, isCorrelation, cLevel, x.Key, subJson) : EvaluateJson(threadId, isCorrelation, cLevel, key + "_" + x.Key, subJson);
 
                     if (cLevel <= Config.DestructureDepth)
                     {
@@ -267,7 +267,7 @@ namespace Seq.Client.Log4Net
             return maskJson;
         }
 
-        static string DestructureXml(string threadId, StringWriter payload, string message, ref string delim)
+        static string DestructureXml(string threadId, bool isCorrelation, StringWriter payload, string message, ref string delim)
         {
             //Attempt to parse XML properties if they exist
             if (!message.Contains("<") || !message.Contains(">")) return message;
@@ -287,7 +287,7 @@ namespace Seq.Client.Log4Net
 
             if (xml.Elements().Any())
             {
-                var x = EvaluateXml(threadId, 0, string.Empty, new MaskXml() {XmlObject = xml.Root});
+                var x = EvaluateXml(threadId, isCorrelation, 0, string.Empty, new MaskXml() {XmlObject = xml.Root});
 
                 foreach (var y in x.XmlValues)
                 {
@@ -315,7 +315,7 @@ namespace Seq.Client.Log4Net
             return message;
         }
 
-        static MaskXml EvaluateXml(string threadId, int level = 0, string key = "", MaskXml xml = null,
+        static MaskXml EvaluateXml(string threadId, bool isCorrelation, int level = 0, string key = "", MaskXml xml = null,
             bool addProperties = true)
         {
             var cLevel = level + 1;
@@ -334,7 +334,7 @@ namespace Seq.Client.Log4Net
                         updateXml.SetElementValue(x.Name, x.Value);
                     }
 
-                    if (!maskXml.IsCorrelate && !string.IsNullOrEmpty(Config.CorrelationProperty) &&
+                    if (!isCorrelation && !maskXml.IsCorrelate && !string.IsNullOrEmpty(Config.CorrelationProperty) &&
                         x.Name.LocalName.Equals(Config.CorrelationProperty, StringComparison.OrdinalIgnoreCase) &&
                         !x.Value.Equals(Guid.Empty.ToString()))
                     {
@@ -360,8 +360,8 @@ namespace Seq.Client.Log4Net
                     {
                         var subXml = new MaskXml() {XmlObject = y};
                         subXml = string.IsNullOrEmpty(key)
-                            ? EvaluateXml(threadId, cLevel, y.Name.LocalName, subXml, false)
-                            : EvaluateXml(threadId, cLevel, key + "_" + y.Name.LocalName, subXml, false);
+                            ? EvaluateXml(threadId, isCorrelation, cLevel, y.Name.LocalName, subXml, false)
+                            : EvaluateXml(threadId, isCorrelation, cLevel, key + "_" + y.Name.LocalName, subXml, false);
 
                         if (cLevel <= Config.DestructureDepth)
                         {
