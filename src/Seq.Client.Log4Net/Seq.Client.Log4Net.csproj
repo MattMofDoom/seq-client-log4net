@@ -31,8 +31,4 @@
       <PackagePath></PackagePath>
     </None>
   </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="System.Runtime.Caching" />
-  </ItemGroup>
 </Project>

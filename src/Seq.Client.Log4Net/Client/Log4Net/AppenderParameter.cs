@@ -16,7 +16,6 @@ using log4net.Layout;
 
 namespace Seq.Client.Log4Net
 {
-    // ReSharper disable once ClassNeverInstantiated.Global
     public class AppenderParameter
     {
         public string ParameterName { get; set; }
