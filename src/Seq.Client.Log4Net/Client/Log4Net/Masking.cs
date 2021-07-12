@@ -1,17 +1,24 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
-// ReSharper disable SwitchStatementHandlesSomeKnownEnumValuesWithDefault
 
 namespace Seq.Client.Log4Net
 {
     public static class Masking
     {
+        public static List<string> MaskProperties { get; set; }
+        public static MaskPolicy MaskType { get; set; } 
 
-        public static object Mask(string name, object value)
+        static Masking()
         {
-            if (!Config.MaskProperties.Contains(name)) return value;
-            switch (Config.MaskType)
+            MaskProperties = new List<string>();
+            MaskType = MaskPolicy.None;
+        }
+
+        public static string Mask(string name, string value)
+        {
+            if (!MaskProperties.Contains(name)) return value;
+            switch (MaskType)
             {
                 case MaskPolicy.MaskWithString:
                     return "XXXXXX";
