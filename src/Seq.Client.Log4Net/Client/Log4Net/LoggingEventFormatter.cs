@@ -135,6 +135,7 @@ namespace Seq.Client.Log4Net
 
         static string DestructureRegex(string threadId, bool isCorrelation, StringWriter payload, string message, ref string delim)
         {
+            bool correlationSet = false;
             if (string.IsNullOrEmpty(Config.PropertyRegex)) return message;
             try
             {
@@ -148,10 +149,13 @@ namespace Seq.Client.Log4Net
                             message = message.Replace(match.Groups[2].Value, mask.ToString());
                         WriteJsonProperty(match.Groups[1].Value, mask, ref delim, payload);
 
-                        if (!isCorrelation && !string.IsNullOrEmpty(Config.CorrelationProperty) &&
+                        if (!isCorrelation && !correlationSet && !string.IsNullOrEmpty(Config.CorrelationProperty) &&
                             match.Groups[1].Value.Equals(Config.CorrelationProperty,
                                 StringComparison.OrdinalIgnoreCase))
+                        {
                             CorrelationCache.Replace(threadId, mask.ToString());
+                            correlationSet = true;
+                        }
                     }
                 }
             }
